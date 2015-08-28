@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml">
+	<head>
+		<base target="_top"></base>
+		<title>Google Maps dynamic GPX example</title>
+		
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	</head>
+	<body>
+		
+		
+	<table cellspacing="0" cellpadding="0" border="0"><tr valign="top"><td width="550">
+		
+		<iframe id="mapframe" src="mapplot.html" width="1200" height="640" marginwidth="0" marginheight="0" scrolling="no" frameborder="0" style="background:#FFFFFF">
+			
+		</iframe>
+		
+	</td>
+	<td width="20">&nbsp;</td><td style="font:11px Verdana">
+				<input type="text" id="trkdate" value='2015-08-27'/>
+				<button type="button" id="redraw" onclick="redraw()">Redraw Map</button>	
+		
+		<h2 style="font:15pt Arial; font-weight:bold; margin:8px 0px 8px 0px;">Generating a map from a GPX file, dynamically</h2>
+
+
+
+
+
+		
+
+	
+	</td></tr></table>
+	
+	</body>
+
+	<script type="text/javascript"> 
+	function redraw() {
+		var frame = $("#mapframe");
+		iframe.attr("src", iframe.data("src")); 
+		
+	
+	}
+	
+	
+	</script>
+	
+</html>
