@@ -23,7 +23,7 @@ if (!$con) {
 if (isset($_GET["dateParam"])) {
 	$date = ($_GET["dateParam"]) . '%';	
 	//$sql = "SELECT n_lat, w_long, date_time, speed, altitude, mode, track, climb, enginetemp, ambienttemp FROM gps WHERE gps tdate LIKE " . "'" . $date . "'";
-	$sql = "SELECT n_lat, w_long, date_time, speed, altitude, mode, track, climb, enginetemp, ambienttemp FROM temps.gps WHERE date_time LIKE " . "'" . $date . "'";
+	$sql = "SELECT n_lat, w_long, date_time, enginetemp, ambienttemp FROM temps.gps WHERE date_time LIKE " . "'" . $date . "'";
 	error_log($sql, 0);
 	$result = mysql_query($sql);
 	
@@ -107,10 +107,18 @@ if (isset($_GET["dateParam"])) {
 		  $coorLat->value = $row['n_lat'];
 		  $coorLong = $dom->createAttribute('lon');
 		  $coorLong->value = $row['w_long'];
+		  $coorET = $dom->createAttribute('ET');
+		  $coorET->value = $row['enginetemp'];	
+		  $coorDate = $dom->createAttribute('date');
+		  $coorDate->value = $row['date_time'];	
+		  $coorAT = $dom->createAttribute('AT');
+		  $coorAT->value = $row['ambienttemp'];		  		  
 		  $coorNode = $dom->createElement('trkpt');
-		  $coorNode->appendChild($coorLat);
+		  $coorNode->appendChild($coorDate);
+		  $coorNode->appendChild($coorLat);		  
 		  $coorNode->appendChild($coorLong);
-		  
+		  $coorNode->appendChild($coorET);
+		  $coorNode->appendChild($coorAT);
 		  $trksegNode->appendChild($coorNode);
 		  
 	  

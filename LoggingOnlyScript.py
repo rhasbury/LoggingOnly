@@ -60,7 +60,7 @@ def signal_quitting(signal, frame):
     gpsp.running = False
     gpsp.join() # wait for the thread to finish what it's doing        
     logging.info("Received Sigint, quitting")
-    logging.debug('You pressed Ctrl+C!')    
+    logging.info('You pressed Ctrl+C!')    
     sys.exit(0)    
 
 
@@ -70,10 +70,10 @@ def logTemplineDB(location, temp):
         with connection.cursor() as cursor:
             cursor.execute ("INSERT INTO tempdat values(NOW(), %s, %s)", (location, temp))
         connection.commit()
-        logging.info("logTempLineDB() Rows logged: %s" % cursor.rowcount)
+        logging.debug("logTempLineDB() Rows logged: %s" % cursor.rowcount)
         connection.close()
     except:
-        logging.debug("logTempLineDB Temperature Logging exception Error ", exc_info=True)
+        logging.error("logTempLineDB Temperature Logging exception Error ", exc_info=True)
 
 
 
@@ -81,12 +81,13 @@ def UpdateTemps():
     global EngineTemp
     global AmbientTemp
     global lcd
-#     global tmp
-#     try:
-#         AmbientTemp = tmp.read_temperature()
-#         logTemplineDB("ambient", AmbientTemp)
-#     except:
-#         print("Ambient Temp Read Error")
+    global tmp
+    if(tmp != None):
+        try:
+            AmbientTemp = tmp.read_temperature()
+            logTemplineDB("ambient", AmbientTemp)
+        except:
+            print("Ambient Temp Read Error")
     
     
     try:
@@ -96,7 +97,7 @@ def UpdateTemps():
         raise   
     except MAX6675Error as e:
         EngineTemp = "Error: "+ e.value
-        logging.debug("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
+        logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
     
     if (lcd != None):
         lcdstring = " %sC" % (EngineTemp)
@@ -120,9 +121,8 @@ def LogGPSPoint():
     except KeyboardInterrupt:                        
         raise
     except:
-        logging.debug("LogGPSPoint: Error opening MySQL connection ", exc_info=True)
+        logging.error("LogGPSPoint: Error opening MySQL connection ", exc_info=True)
         sys.exit(1)
-
 
     try:    
         if(gpsd.fix.mode == 3):        
@@ -133,13 +133,13 @@ def LogGPSPoint():
             sql = sql.replace("nan", "-9999")
             cur.execute(sql)
             con.commit()
-            #logging.info("Rows inserted: %s" % cur.rowcount)
-            #logging.info("SQL String: %s" % sql)
+            logging.debug("Rows inserted: %s" % cur.rowcount)
+            logging.debug("SQL String: %s" % sql)
     except KeyboardInterrupt:                        
         raise
     except:
         #print (sys.exc_info()[0])
-        logging.debug("LogGPSPoint() excepted trying to log GPS data ", exc_info=True)
+        logging.error("LogGPSPoint() excepted trying to log GPS data ", exc_info=True)
 
     finally:
         if con:
@@ -153,11 +153,19 @@ def LogGPSPoint():
             gtime = dateutil.parser.parse(gpsd.utc)            
             lcdstring = "%s" % (gtime.strftime('%I:%M'))
             lcd.setPosition(1, 8)
-            lcd.writeString(lcdstring)        
+            lcd.writeString(lcdstring)
+        elif(lcd != None and gpsd.fix.mode != 3):
+            lcdstring = "No GPS Fix" 
+            lcd.setPosition(2, 0) 
+            lcd.writeString(lcdstring)                 
+            lcdstring = "        " 
+            lcd.setPosition(1, 8)
+            lcd.writeString(lcdstring)
+                    
     except KeyboardInterrupt:                        
         raise
     except:
-        logging.debug("LogGPSPoint() failed to write to LCD ", exc_info=True) 
+        logging.error("LogGPSPoint() failed to write to LCD ", exc_info=True) 
 
 
 
@@ -185,7 +193,7 @@ class GpsPoller(threading.Thread):
             except KeyboardInterrupt:                        
                 raise
             except:
-                logging.debug("GPSPoller() excepted connecting to GPSD ", exc_info=True)
+                logging.error("GPSPoller() excepted connecting to GPSD ", exc_info=True)
                 gps_connected = False
 
             
@@ -196,13 +204,13 @@ class GpsPoller(threading.Thread):
                         gpsd.next() #this will continue to loop and grab EACH set of gpsd info to clear the buffer
                         LogGPSPoint()
                     except JsonError:
-                        logging.debug("run() -> gpsd.next() threw JsonError", exc_info=True)
+                        logging.error("run() -> gpsd.next() threw JsonError", exc_info=True)
                         gps_connected = False                
                     except ValueError:
-                        logging.debug("run() -> gpsd.next() threw ValueError", exc_info=True)
+                        logging.error("run() -> gpsd.next() threw ValueError", exc_info=True)
                         gps_connected = False
                     except StopIteration:                    
-                        logging.debug("run() -> gpsd.next() threw stopiteration", exc_info=True)
+                        logging.error("run() -> gpsd.next() threw stopiteration", exc_info=True)
                         gps_connected = False
                     except KeyboardInterrupt:                        
                         raise
@@ -216,8 +224,13 @@ class GpsPoller(threading.Thread):
 if __name__ == "__main__":
 #    global gpsp
 #    global tmp
-#    tmp = BMP085.BMP085()
-    logging.getLogger().setLevel(logging.DEBUG)
+    try:
+        tmp = BMP085.BMP085()
+    except:
+        logging.error("BMP085 IO Error", exc_info=True)
+        tmp = None
+        
+    logging.getLogger().setLevel(logging.INFO)
     logging.info("Logging started")
     signal.signal(signal.SIGINT, signal_quitting)
     
@@ -227,7 +240,7 @@ if __name__ == "__main__":
         lcd = i2c_lcd.i2c_lcd(0x27, 1, 2, 1, 0, 4, 5, 6, 7, 3)
         lcd.backLightOn()
     except IOError:
-        logging.debug("LCD IO Error", exc_info=True)
+        logging.error("LCD IO Error", exc_info=True)
         lcd = None
         
     gpsp = GpsPoller()
