@@ -36,7 +36,8 @@
 				
 			<div id="gv_infobox" class="gv_infobox" style="font:11px Arial; border:solid #666666 1px; background:#ffffff; padding:4px; overflow:auto; display:none; max-width:500px;">
 				<!-- Although GPS Visualizer didn't create an legend/info box with your map, you can use this space for something else if you'd like; enable it by setting gv_options.infobox_options.enabled to true -->
-				<input type="text" id="trkdate" value='2015-08-27'/>
+				<select id="dateList""></select>
+				
 				<button type="button" id="redraw" onclick="redraw()">Redraw Map</button>
 			</div>
 
@@ -204,9 +205,51 @@
 	
 		<!-- end GPSV setup script and styles; begin map-drawing script (they must be separate) -->
 		<script type="text/javascript">
+			function redraw(){			
+				
+				var e = document.getElementById("dateList");
+				var sdate = e.options[e.selectedIndex].value;
+				gv_options.dynamic_data[0].url = 'track_data_pull.php?dateParam=' + sdate; 
+				GV_Reload_Markers_From_File();
+				}
 		
 			function GV_Map() {				
-				date = '2015-08-';
+				date = '2015-09-01';
+			
+				var dateList = document.getElementById("dateList");
+				var m = new Date();
+
+				date = m.getUTCFullYear() +"-"+
+				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
+				("0" + m.getUTCDate()).slice(-2);
+				
+				var option = document.createElement("option");
+				option.text = m.getUTCFullYear() +"-"+
+				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
+				("0" + m.getUTCDate()).slice(-2);
+				dateList.add(option);
+				
+				m.setDate(m.getDate()-1);
+				var option = document.createElement("option");
+				option.text = m.getUTCFullYear() +"-"+
+				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
+				("0" + m.getUTCDate()).slice(-2);		
+				dateList.add(option);
+				
+				m.setDate(m.getDate()-1);
+				var option = document.createElement("option");
+				option.text = m.getUTCFullYear() +"-"+
+				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
+				("0" + m.getUTCDate()).slice(-2);		
+				dateList.add(option);
+				
+				m.setDate(m.getDate()-1);
+				var option = document.createElement("option");
+				option.text = m.getUTCFullYear() +"-"+
+				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
+				("0" + m.getUTCDate()).slice(-2);		
+				dateList.add(option);
+				
 				GV_Setup_Map();
 				
 				
@@ -226,6 +269,10 @@
 					autozoom:true, zoom_default:8, zoom_adjustment:0 // e.g., to zoom out one step, set zoom_adjustment to -1
 					}
 				];
+
+
+	
+
 				
 				GV_Finish_Map();
 			  
