@@ -96,11 +96,12 @@ def UpdateTemps():
     except KeyboardInterrupt:                        
         raise   
     except MAX6675Error as e:
-        EngineTemp = "Error: "+ e.value
+        #EngineTemp = "Error: "+ e.value
+        EngineTemp = -10
         logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
     
     if (lcd != None):
-        lcdstring = " %sC" % (EngineTemp)
+        lcdstring = " ET: %3.1sC AT: %3.1sC" % (EngineTemp, AmbientTemp)
         lcd.clear
         lcd.setPosition(1, 0) 
         lcd.writeString(lcdstring)
@@ -152,7 +153,7 @@ def LogGPSPoint():
             lcd.writeString(lcdstring)
             gtime = dateutil.parser.parse(gpsd.utc)            
             lcdstring = "%s" % (gtime.strftime('%I:%M'))
-            lcd.setPosition(1, 8)
+            lcd.setPosition(1, 12)
             lcd.writeString(lcdstring)
         elif(lcd != None and gpsd.fix.mode != 3):
             lcdstring = "No GPS Fix" 
@@ -197,7 +198,7 @@ class GpsPoller(threading.Thread):
                 gps_connected = False
 
             
-            UpdateTemps()
+            
             while(gps_connected == True):
                 if(gpsd.waiting(3000)):                
                     try:
@@ -214,7 +215,7 @@ class GpsPoller(threading.Thread):
                         gps_connected = False
                     except KeyboardInterrupt:                        
                         raise
-                    
+                UpdateTemps() 
                 time.sleep(0.5)
                 
             time.sleep(5)
