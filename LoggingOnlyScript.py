@@ -8,6 +8,7 @@ import datetime
 import pymysql.cursors
 import RPi.GPIO as GPIO
 import time
+from datetime import timedelta
 import threading
 import sys
 import dateutil.parser
@@ -101,7 +102,8 @@ def UpdateTemps():
         logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
     
     if (lcd != None):
-        lcdstring = " ET: %3.1sC AT: %3.1sC" % (EngineTemp, AmbientTemp)
+        lcdstring = "E:%4.1fC A:%4.1fC" % (EngineTemp, AmbientTemp)
+        #print (lcdstring)
         lcd.clear
         lcd.setPosition(1, 0) 
         lcd.writeString(lcdstring)
@@ -147,21 +149,16 @@ def LogGPSPoint():
             con.close()
 
     try:
-        if(lcd != None and gpsd.fix.mode == 3):            
-            lcdstring = "%sm   %s" % (gpsd.fix.altitude, gpsd.fix.track)
-            lcd.setPosition(2, 0) 
-            lcd.writeString(lcdstring)
-            gtime = dateutil.parser.parse(gpsd.utc)            
-            lcdstring = "%s" % (gtime.strftime('%I:%M'))
-            lcd.setPosition(1, 12)
+        if(lcd != None and gpsd.fix.mode == 3):
+            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
+            lcdstring = "%sm   %s" % (gpsd.fix.altitude, gtime.strftime('%I:%M'))
+            lcd.setPosition(2, 0)
             lcd.writeString(lcdstring)
         elif(lcd != None and gpsd.fix.mode != 3):
             lcdstring = "No GPS Fix" 
             lcd.setPosition(2, 0) 
             lcd.writeString(lcdstring)                 
-            lcdstring = "        " 
-            lcd.setPosition(1, 8)
-            lcd.writeString(lcdstring)
+
                     
     except KeyboardInterrupt:                        
         raise
