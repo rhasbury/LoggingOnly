@@ -8,7 +8,12 @@ import datetime
 import pymysql.cursors
 import RPi.GPIO as GPIO
 import time
+<<<<<<< .mine
+from time import mktime
 from datetime import timedelta
+=======
+from datetime import timedelta
+>>>>>>> .r9
 import threading
 import sys
 import dateutil.parser
@@ -131,8 +136,8 @@ def LogGPSPoint():
         if(gpsd.fix.mode == 3):        
             #print ('time utc    ' , gpsd.utc)
             #print ('time utc    ' , gpsd.fix.time)
-
-            sql = "insert into gps(n_lat, w_long, date_time, speed, altitude, mode, track, climb, enginetemp, ambienttemp) values(%s, %s, NOW(), %s, %s, %s, %s, %s, %s, %s)" % (gpsd.fix.latitude, gpsd.fix.longitude, gpsd.fix.speed, gpsd.fix.altitude, gpsd.fix.mode, gpsd.fix.track, gpsd.fix.climb, EngineTemp, AmbientTemp)
+            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
+            sql = "insert into gps(n_lat, w_long, date_time, fix_time, speed, altitude, mode, track, climb, enginetemp, ambienttemp) values(%s, %s, NOW(), FROM_UNIXTIME(%s), %s, %s, %s, %s, %s, %s, %s)" % (gpsd.fix.latitude, gpsd.fix.longitude, mktime(gtime.timetuple()), gpsd.fix.speed, gpsd.fix.altitude, gpsd.fix.mode, gpsd.fix.track, gpsd.fix.climb, EngineTemp, AmbientTemp)
             sql = sql.replace("nan", "-9999")
             cur.execute(sql)
             con.commit()
@@ -149,13 +154,20 @@ def LogGPSPoint():
             con.close()
 
     try:
+<<<<<<< .mine
+        if(lcd != None and gpsd.fix.mode == 3):
+            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
+            lcdstring = "%4.1fm %3.1f %s" % (gpsd.fix.altitude, (gpsd.fix.speed * 3.6), gtime.strftime('%I:%M'))
+            lcd.setPosition(2, 0)
+=======
         if(lcd != None and gpsd.fix.mode == 3):
             gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
             lcdstring = "%sm   %s" % (gpsd.fix.altitude, gtime.strftime('%I:%M'))
             lcd.setPosition(2, 0)
+>>>>>>> .r9
             lcd.writeString(lcdstring)
         elif(lcd != None and gpsd.fix.mode != 3):
-            lcdstring = "No GPS Fix" 
+            lcdstring = "No GPS Fix      " 
             lcd.setPosition(2, 0) 
             lcd.writeString(lcdstring)                 
 
@@ -195,12 +207,18 @@ class GpsPoller(threading.Thread):
                 gps_connected = False
 
             
+<<<<<<< .mine
+            oldtime = time.time()
+=======
             
+>>>>>>> .r9
             while(gps_connected == True):
                 if(gpsd.waiting(3000)):                
-                    try:
+                    try:                        
                         gpsd.next() #this will continue to loop and grab EACH set of gpsd info to clear the buffer
-                        LogGPSPoint()
+                        if(time.time() - oldtime > 2):                            
+                            oldtime = time.time()
+                            LogGPSPoint()                        
                     except JsonError:
                         logging.error("run() -> gpsd.next() threw JsonError", exc_info=True)
                         gps_connected = False                
@@ -212,8 +230,13 @@ class GpsPoller(threading.Thread):
                         gps_connected = False
                     except KeyboardInterrupt:                        
                         raise
+<<<<<<< .mine
+                UpdateTemps() 
+                #time.sleep(0.5)
+=======
                 UpdateTemps() 
                 time.sleep(0.5)
+>>>>>>> .r9
                 
             time.sleep(5)
              
