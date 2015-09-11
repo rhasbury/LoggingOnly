@@ -229,7 +229,14 @@
 				("0" + m.getUTCDate()).slice(-2);
 				dateList.add(option);
 				
-				m.setDate(m.getDate()-1);
+				m.setDate(m.getDate()+1);
+				var option = document.createElement("option");
+				option.text = m.getUTCFullYear() +"-"+
+				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
+				("0" + m.getUTCDate()).slice(-2);		
+				dateList.add(option);
+				
+				m.setDate(m.getDate()-2);
 				var option = document.createElement("option");
 				option.text = m.getUTCFullYear() +"-"+
 				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
@@ -249,6 +256,8 @@
 				("0" + (m.getUTCMonth()+1)).slice(-2) +"-"+
 				("0" + m.getUTCDate()).slice(-2);		
 				dateList.add(option);
+				
+
 				
 				GV_Setup_Map();
 				

@@ -23,7 +23,7 @@ if (!$con) {
 if (isset($_GET["dateParam"])) {
 	$date = ($_GET["dateParam"]) . '%';	
 	//$sql = "SELECT n_lat, w_long, date_time, speed, altitude, mode, track, climb, enginetemp, ambienttemp FROM gps WHERE gps tdate LIKE " . "'" . $date . "'";
-	$sql = "SELECT n_lat, w_long, date_time, enginetemp, ambienttemp FROM temps.gps WHERE date_time LIKE " . "'" . $date . "'";
+	$sql = "SELECT n_lat, w_long, date_time, enginetemp, ambienttemp FROM temps.gps WHERE date_time LIKE " . "'" . $date . "'" . "ORDER by date_time DESC LIMIT 3000";
 	error_log($sql, 0);
 	$result = mysql_query($sql);
 	
