@@ -8,12 +8,8 @@ import datetime
 import pymysql.cursors
 import RPi.GPIO as GPIO
 import time
-<<<<<<< .mine
 from time import mktime
 from datetime import timedelta
-=======
-from datetime import timedelta
->>>>>>> .r9
 import threading
 import sys
 import dateutil.parser
@@ -38,34 +34,31 @@ thermocouple = MAX6675(cs_pin, clock_pin, data_pin, units)
 EngineTemp = 0; 
 AmbientTemp = 0
 
+lcdline1 = "   starting     "
+lcdline2 = "     now        "
+
+
 gpsd = None #seting the global variable
 gpsp = None #
 tmp = None
 lcd = None
 
 
-#def setup():
-
- # start it up
-    #tmp = webiopi.deviceInstance("temp0")
-
-# loop function is repeatedly called by WebIOPi 
-#def loop():
-  
-#    webiopi.sleep(20)
-  
-
-#def destroy():
-#    global gpsp
-#    gpsp.running = False
-#    gpsp.join() # wait for the thread to finish what it's doing    
-    
-
 def signal_quitting(signal, frame):
     global gpsp
+    logging.info("Received Sigint, killing threads and waiting for join. ")
+    
     gpsp.running = False
-    gpsp.join() # wait for the thread to finish what it's doing        
-    logging.info("Received Sigint, quitting")
+    tempthread.running = False
+    lcdthread.running = False
+    
+    gpsp.join(2) # wait for the thread to finish what it's doing
+    logging.info("gps thread killed, quitting")
+    lcdthread.join(2)
+    logging.info("lcd update thread killed, quitting")
+    tempthread.join(2)
+    logging.info("temperature updating thread killed, quitting")
+    logging.info("all threads killed, quitting")
     logging.info('You pressed Ctrl+C!')    
     sys.exit(0)    
 
@@ -86,7 +79,8 @@ def logTemplineDB(location, temp):
 def UpdateTemps():
     global EngineTemp
     global AmbientTemp
-    global lcd
+    global lcdline1
+    global lcdline2  
     global tmp
     if(tmp != None):
         try:
@@ -94,8 +88,7 @@ def UpdateTemps():
             logTemplineDB("ambient", AmbientTemp)
         except:
             print("Ambient Temp Read Error")
-    
-    
+
     try:
         EngineTemp = thermocouple.get()
         logTemplineDB("engine", EngineTemp)     
@@ -106,21 +99,18 @@ def UpdateTemps():
         EngineTemp = -10
         logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
     
-    if (lcd != None):
-        lcdstring = "E:%4.1fC A:%4.1fC" % (EngineTemp, AmbientTemp)
+
+    lcdline1 = "E:%4.1fC A:%4.1fC" % (EngineTemp, AmbientTemp)
         #print (lcdstring)
-        lcd.clear
-        lcd.setPosition(1, 0) 
-        lcd.writeString(lcdstring)
+
 
 
 def LogGPSPoint():
     global gpsd
     global EngineTemp
     global AmbientTemp
-    global tmp
-    global lcd
- 
+    global lcdline1
+    global lcdline2   
     resp = ""
    
     try:
@@ -143,6 +133,12 @@ def LogGPSPoint():
             con.commit()
             logging.debug("Rows inserted: %s" % cur.rowcount)
             logging.debug("SQL String: %s" % sql)
+            lcdline2 = "%4.1fm %3.1f %s" % (gpsd.fix.altitude, (gpsd.fix.speed * 3.6), gtime.strftime('%I:%M'))
+        elif(gpsd.fix.mode != 3):
+            lcdline2 = "No GPS Fix      "
+    
+    
+    
     except KeyboardInterrupt:                        
         raise
     except:
@@ -152,30 +148,8 @@ def LogGPSPoint():
     finally:
         if con:
             con.close()
-
-    try:
-<<<<<<< .mine
-        if(lcd != None and gpsd.fix.mode == 3):
-            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
-            lcdstring = "%4.1fm %3.1f %s" % (gpsd.fix.altitude, (gpsd.fix.speed * 3.6), gtime.strftime('%I:%M'))
-            lcd.setPosition(2, 0)
-=======
-        if(lcd != None and gpsd.fix.mode == 3):
-            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
-            lcdstring = "%sm   %s" % (gpsd.fix.altitude, gtime.strftime('%I:%M'))
-            lcd.setPosition(2, 0)
->>>>>>> .r9
-            lcd.writeString(lcdstring)
-        elif(lcd != None and gpsd.fix.mode != 3):
-            lcdstring = "No GPS Fix      " 
-            lcd.setPosition(2, 0) 
-            lcd.writeString(lcdstring)                 
-
-                    
-    except KeyboardInterrupt:                        
-        raise
-    except:
-        logging.error("LogGPSPoint() failed to write to LCD ", exc_info=True) 
+      
+     
 
 
 
@@ -190,8 +164,6 @@ class GpsPoller(threading.Thread):
     def run(self):
         global gpsd
         global gpsp
-        global EngineTemp
-        global AmbientTemp
         
         gps_connected = False
         
@@ -207,11 +179,7 @@ class GpsPoller(threading.Thread):
                 gps_connected = False
 
             
-<<<<<<< .mine
             oldtime = time.time()
-=======
-            
->>>>>>> .r9
             while(gps_connected == True):
                 if(gpsd.waiting(3000)):                
                     try:                        
@@ -230,27 +198,64 @@ class GpsPoller(threading.Thread):
                         gps_connected = False
                     except KeyboardInterrupt:                        
                         raise
-<<<<<<< .mine
-                UpdateTemps() 
-                #time.sleep(0.5)
-=======
-                UpdateTemps() 
-                time.sleep(0.5)
->>>>>>> .r9
                 
-            time.sleep(5)
+                #time.sleep(0.5)
+                
+            #time.sleep(5)
              
  
  
+ 
+class LcdUpdate(threading.Thread):
+    
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.current_value = None
+        self.running = True #setting the thread running to true 
+        
+        
+    def run(self):
+        global lcd
+        global lcdline1
+        global lcdline2                 
+        while self.running:
+            lcd.clear
+            lcd.setPosition(1, 0) 
+            lcd.writeString(lcdline1)
+            lcd.setPosition(2, 0) 
+            lcd.writeString(lcdline2)
+            logging.debug("LCDString1: %s" % lcdline1)
+            logging.debug("LCDString2: %s" % lcdline2)
+            time.sleep(0.2)
+             
+
+ 
+ 
+ 
+class TempUpdates(threading.Thread):
+    
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.current_value = None
+        self.running = True #setting the thread running to true 
+        
+        
+    def run(self):                 
+        while self.running:
+            UpdateTemps()
+            time.sleep(0.2)
+            
+ 
+ 
 if __name__ == "__main__":
-#    global gpsp
-#    global tmp
+
     try:
         tmp = BMP085.BMP085()
     except:
         logging.error("BMP085 IO Error", exc_info=True)
         tmp = None
-        
+
+    
     logging.getLogger().setLevel(logging.INFO)
     logging.info("Logging started")
     signal.signal(signal.SIGINT, signal_quitting)
@@ -263,8 +268,17 @@ if __name__ == "__main__":
     except IOError:
         logging.error("LCD IO Error", exc_info=True)
         lcd = None
-        
-    gpsp = GpsPoller()
-    gpsp.start()
 
-     
+    try:        
+        gpsp = GpsPoller()
+        gpsp.start()
+        
+        tempthread = TempUpdates()
+        tempthread.start()
+    
+        if(lcd != None):
+            lcdthread = LcdUpdate()
+            lcdthread.start()
+        while True: time.sleep(100)
+    except:
+        raise    
