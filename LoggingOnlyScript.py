@@ -132,6 +132,22 @@ def LogGPSPoint():
         sys.exit(1)
 
     try:    
+<<<<<<< .mine
+        if(gpsd.fix.mode == 3):
+            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=5)
+            logging.debug("difference in old points {0}, {1} ".format(abs(oldlat - gpsd.fix.latitude), abs(oldlong - gpsd.fix.longitude)))
+            if(abs(oldlat - gpsd.fix.latitude) > logradius or abs(oldlong - gpsd.fix.longitude) > logradius):                 
+                #print ('time utc    ' , gpsd.utc)
+                #print ('time utc    ' , gpsd.fix.time)                
+                sql = "insert into gps(n_lat, w_long, date_time, fix_time, speed, altitude, mode, track, climb, enginetemp, ambienttemp, satellites) values(%s, %s, NOW(), FROM_UNIXTIME(%s), %s, %s, %s, %s, %s, %s, %s, %s)" % (gpsd.fix.latitude, gpsd.fix.longitude, mktime(gtime.timetuple()), gpsd.fix.speed, gpsd.fix.altitude, gpsd.fix.mode, gpsd.fix.track, gpsd.fix.climb, EngineTemp, AmbientTemp, len(gpsd.satellites))
+                sql = sql.replace("nan", "-9999")
+                cur.execute(sql)
+                con.commit()                
+                oldlat = gpsd.fix.latitude
+                oldlong = gpsd.fix.longitude
+                logging.debug("Rows inserted: %s" % cur.rowcount)
+                logging.debug("SQL String: %s" % sql)
+=======
         if(gpsd.fix.mode == 3):
             gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
             logging.debug("difference in old points {0}, {1} ".format(abs(oldlat - gpsd.fix.latitude), abs(oldlong - gpsd.fix.longitude)))
@@ -146,6 +162,7 @@ def LogGPSPoint():
                 oldlong = gpsd.fix.longitude
                 logging.debug("Rows inserted: %s" % cur.rowcount)
                 logging.debug("SQL String: %s" % sql)
+>>>>>>> .r13
             lcdline2 = "%4.1fm %3.1f %s" % (gpsd.fix.altitude, (gpsd.fix.speed * 3.6), gtime.strftime('%I:%M'))
         elif(gpsd.fix.mode != 3):
             lcdline2 = "No GPS Fix      "
@@ -197,7 +214,12 @@ class GpsPoller(threading.Thread):
                 if(gpsd.waiting(3000)):                
                     try:                        
                         gpsd.next() #this will continue to loop and grab EACH set of gpsd info to clear the buffer
+<<<<<<< .mine
+                        logging.debug("seconds passed since last GPS sentence: %s", (time.time() - oldtime))
+                        if(time.time() - oldtime > 2):                            
+=======
                         if(time.time() - oldtime > 5):                            
+>>>>>>> .r13
                             oldtime = time.time()
                             LogGPSPoint()                        
                     except JsonError:
