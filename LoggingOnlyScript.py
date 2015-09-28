@@ -147,7 +147,7 @@ def LogGPSPoint():
 
     try:    
         if(gpsd.fix.mode == 3):
-            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=5)
+            gtime = dateutil.parser.parse(gpsd.utc) - timedelta(hours=4)
             logging.debug("difference in old points {0}, {1} ".format(abs(oldlat - gpsd.fix.latitude), abs(oldlong - gpsd.fix.longitude)))
             if(abs(oldlat - gpsd.fix.latitude) > logradius or abs(oldlong - gpsd.fix.longitude) > logradius):                 
                 #print ('time utc    ' , gpsd.utc)
