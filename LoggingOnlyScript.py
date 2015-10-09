@@ -2,6 +2,8 @@
 import os
 os.system("export QUICK2WIRE_API_HOME=~/temperature/quick2wire-python-api")
 os.system("export PYTHONPATH=$PYTHONPATH:$QUICK2WIRE_API_HOME")
+os.system("export MPU6050_PATH=~/temperature/MPU6050")
+os.system("export PYTHONPATH=$PYTHONPATH:$MPU6050_PATH")
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', filename='/home/pi/temperature/Loggingonly.log', level=logging.DEBUG)
 import datetime
@@ -24,6 +26,7 @@ from max6675 import *
 from webiopi.clients import *
 from _ctypes import addressof
 from gps import *
+from MPU6050 import sensor
 
 #signal.signal(signal.SIGINT, signal_handler)
 
@@ -48,6 +51,7 @@ ktempq = collections.deque(maxlen=tempqlen)
 
 lcdline1 = "   starting     "
 lcdline2 = "     now        "
+lcdline3 = "     roll       "
 
 
 gpsd = None #seting the global variable
@@ -63,6 +67,8 @@ def signal_quitting(signal, frame):
     gpsp.running = False
     tempthread.running = False
     lcdthread.running = False
+    
+    ninedof.stop()
     
     gpsp.join(2) # wait for the thread to finish what it's doing
     logging.info("gps thread killed, quitting")
@@ -92,7 +98,8 @@ def UpdateTemps():
     global EngineTemp
     global AmbientTemp
     global lcdline1
-    global lcdline2  
+    global lcdline2
+    global lcdline3    
     global tmp
     global oldktemp
     
@@ -101,7 +108,7 @@ def UpdateTemps():
             AmbientTemp = tmp.read_temperature()
             logTemplineDB("ambient", AmbientTemp)
         except:
-            print("Ambient Temp Read Error")
+            logging.error("UpdateTemps() Ambient Temp Read Error: ", exc_info=True)
 
     try:
         EngineTemp = thermocouple.get()
@@ -118,8 +125,18 @@ def UpdateTemps():
         EngineTemp = -10
         logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
     
-
+    if(ninedof != None):
+        try:
+            roll = ninedof.roll
+            #lcdline3 = "Roll: %4.1f " % (ninedof.roll)
+            roll = roll + 90
+            charposition = round(abs(roll/12)) 
+            s = "              "
+            if (charposition < 15) :
+                lcdline3 = s[:charposition] + 'O' + s[charposition:]
     
+        except:
+            logging.error("UpdateTemps() ninedof sensor couldn't be read", exc_info=True)
         #print (lcdstring)
 
 
@@ -251,7 +268,7 @@ class LcdUpdate(threading.Thread):
             lcd.setPosition(1, 0) 
             lcd.writeString(lcdline1)
             lcd.setPosition(2, 0) 
-            lcd.writeString(lcdline2)
+            lcd.writeString(lcdline3)
             logging.debug("LCDString1: %s" % lcdline1)
             logging.debug("LCDString2: %s" % lcdline2)
             time.sleep(0.2)
@@ -282,6 +299,13 @@ if __name__ == "__main__":
     except:
         logging.error("BMP085 IO Error", exc_info=True)
         tmp = None
+
+    try:
+        ninedof = sensor.sensor()
+        ninedof.start()
+    except IOError:
+        logging.error("9dof sensor init error", exc_info=True)
+        ninedof = None
 
     
     logging.getLogger().setLevel(logging.INFO)
