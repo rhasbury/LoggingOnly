@@ -18,9 +18,9 @@ path {
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script>
-var margin = {top: 30, right: 20, bottom: 30, left: 50},
+var margin = {top: 30, right: 20, bottom: 40, left: 50},
 	width = 600 - margin.left - margin.right,
-	height = 270 - margin.top - margin.bottom;
+	height = 370 - margin.top - margin.bottom;
 
 var parseDate = d3.time.format("%d-%b-%y").parse;
 
@@ -69,13 +69,34 @@ d3.json("temp_pull.php", function(error, data) {
 	//svg.append("path") // Add the valueline path.
 	//	.attr("d", valueline(data));
 	
+	lSpace = width/dataGroup.length;
+	
+	lcol = " ";
 	
 	dataGroup.forEach(function(d, i) {
 		svg.append('svg:path')
-			.attr('d', valueline(d.values))
-			.attr('stroke', 'blue')
-			.attr('stroke-width', 2)
+			.attr('d', valueline(d.values))			
+			.attr('stroke-width', 2)			
+		    .style("stroke", function(d, j) {
+			lcol = "hsl(" + Math.random() * 360 + ",100%,50%)"
+            return lcol;
+			})
+			.attr('id', 'line_'+d.key)
 			.attr('fill', 'none');
+			
+			svg.append("text")
+				.attr("x", (lSpace / 2) + i * lSpace)
+				.attr("y", (height + margin.bottom))
+				.style("fill", lcol)
+				.text(d.key)	
+				.on('click', function() {
+					var active = d.active ? false : true;
+					var opacity = active ? 0 : 1; 
+					d3.select("#line_" + d.key).style("opacity", opacity); 
+					d.active = active
+				});
+			
+			
 			});
 	
 	svg.append("g") // Add the X Axis
@@ -87,13 +108,19 @@ d3.json("temp_pull.php", function(error, data) {
 		.attr("class", "y axis")
 		.call(yAxis);
 
-		svg.append("text")
+	// adding graph title
+	svg.append("text")
 		.attr("x", (width / 2))
 		.attr("y", 0 - (margin.top / 2))
 		.attr("text-anchor", "middle")
 		.style("font-size", "16px")
 		.style("text-decoration", "underline")
 		.text("Time v Temperature");
+		
+
+	
+	
+
 		
 });
 

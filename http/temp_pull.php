@@ -20,7 +20,7 @@ $date = '2015-05-12';
 // Order by was killing my temps database for some reason. Removed. 
 
     $myquery = "
-SELECT  UNIX_TIMESTAMP(`tdate`) AS 'fix_time', zone, temperature  FROM  `tempdat2` WHERE tdate LIKE " . "'" . $date . "%'" . " LIMIT 3000
+SELECT  UNIX_TIMESTAMP(`tdate`) AS 'fix_time', zone, temperature  FROM  `tempdat2` WHERE tdate LIKE " . "'" . $date . "%'" . " ORDER by tdate DESC LIMIT 3000
 ";
 
 
