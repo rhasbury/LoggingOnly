@@ -11,11 +11,18 @@
 //SELECT  `date`, `close` FROM  `data2`
 //";
 
-$date = '2015-09-11';
+$date = '2015-05-12';
+
+//    $myquery = "
+//SELECT  UNIX_TIMESTAMP(`tdate`) AS 'fix_time', 'zone', 'temperature'  FROM  `tempdat` WHERE tdate LIKE " . "'" . $date . "%'" . " ORDER by tdate DESC LIMIT 3000
+//";
+
+// Order by was killing my temps database for some reason. Removed. 
 
     $myquery = "
-SELECT  UNIX_TIMESTAMP(`tdate`) AS 'fix_time', 'zone', 'temperature'  FROM  `tempdat` WHERE tdate LIKE " . "'" . $date . "%'" . " ORDER by fix_time DESC LIMIT 3000
+SELECT  UNIX_TIMESTAMP(`tdate`) AS 'fix_time', zone, temperature  FROM  `tempdat2` WHERE tdate LIKE " . "'" . $date . "%'" . " LIMIT 3000
 ";
+
 
 	error_log($myquery , 0);
     $query = mysql_query($myquery);

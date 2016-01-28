@@ -35,7 +35,7 @@ var yAxis = d3.svg.axis().scale(y)
 
 var valueline = d3.svg.line()
 	.x(function(d) { return x(d.fix_time); })
-	.y(function(d) { return y(d.enginetemp); });
+	.y(function(d) { return y(d.temperature); });
 
 var svg = d3.select("body")
 	.append("svg")
@@ -48,19 +48,35 @@ d3.json("temp_pull.php", function(error, data) {
     data.forEach(function(d) {
         //d.fix_time = parseDate(+d.fix_time);
 		d.fix_time = new Date(+d.fix_time*1000);
-        d.enginetemp = +d.enginetemp;
+        d.temperature = +d.temperature;
     });
+	
+	var dataGroup = d3.nest()
+		.key(function(d) {
+			return d.zone;
+		})
+    .entries(data);
+	
 	// Scale the range of the data
 	x.domain(d3.extent(data, function(d) { return d.fix_time; }));
 	
 	// fixes y axis at 20
-	//y.domain([20, d3.max(data, function(d) { return d.enginetemp; })]);
+	//y.domain([20, d3.max(data, function(d) { return d.temperature; })]);
 	
 	//makes y axis extend across dataset 
-	y.domain(d3.extent(data, function(d) { return d.enginetemp; }));
+	y.domain(d3.extent(data, function(d) { return d.temperature; }));
 	
-	svg.append("path") // Add the valueline path.
-		.attr("d", valueline(data));
+	//svg.append("path") // Add the valueline path.
+	//	.attr("d", valueline(data));
+	
+	
+	dataGroup.forEach(function(d, i) {
+		svg.append('svg:path')
+			.attr('d', valueline(d.values))
+			.attr('stroke', 'blue')
+			.attr('stroke-width', 2)
+			.attr('fill', 'none');
+			});
 	
 	svg.append("g") // Add the X Axis
 		.attr("class", "x axis")
