@@ -78,7 +78,7 @@ d3.json("temp_pull.php", function(error, data) {
 			.attr('d', valueline(d.values))			
 			.attr('stroke-width', 2)			
 		    .style("stroke", function(d, j) {
-			lcol = "hsl(" + Math.random() * 360 + ",100%,50%)"
+			lcol = "hsl(" + ((i * 80)+40) + ",100%,50%)"
             return lcol;
 			})
 			.attr('id', 'line_'+d.key)
