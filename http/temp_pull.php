@@ -14,7 +14,7 @@
 $date = '2015-09-11';
 
     $myquery = "
-SELECT  `fix_time`, `enginetemp`, `ambienttemp` FROM  `gps` WHERE fix_time LIKE " . "'" . $date . "%'" . " ORDER by fix_time DESC LIMIT 3000
+SELECT  UNIX_TIMESTAMP(`tdate`) AS 'fix_time', 'zone', 'temperature'  FROM  `tempdat` WHERE tdate LIKE " . "'" . $date . "%'" . " ORDER by fix_time DESC LIMIT 3000
 ";
 
 	error_log($myquery , 0);
