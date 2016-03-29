@@ -112,7 +112,7 @@ def UpdateTemps():
 
     try:
         EngineTemp = thermocouple.get()
-        if(EngineTemp < 200 ):                  # check to remove unrealistic measurement...which happen frequently due to engine noise.              
+        if(EngineTemp < 200 ):                  # check to remove unrealistic measurements....which happen frequently due to engine/ignition noise.              
             ktempq.append(EngineTemp)            
             qavg = sum(ktempq) / ktempq.__len__()
             if(abs(EngineTemp-qavg) < 10):
@@ -124,6 +124,8 @@ def UpdateTemps():
         #EngineTemp = "Error: "+ e.value
         EngineTemp = -10
         logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
+    
+    
     
     if(ninedof != None):
         try:
@@ -294,12 +296,16 @@ class TempUpdates(threading.Thread):
  
 if __name__ == "__main__":
 
+
+    # Check for connected BMP085 sensor
     try:
         tmp = BMP085.BMP085()
     except:
         logging.error("BMP085 IO Error", exc_info=True)
         tmp = None
 
+
+    # Check for connected MPU6050 sensor
     try:
         ninedof = sensor.sensor()
         ninedof.start()
@@ -307,11 +313,12 @@ if __name__ == "__main__":
         logging.error("9dof sensor init error", exc_info=True)
         ninedof = None
 
-    
+    # Create logger and set options
     logging.getLogger().setLevel(logging.INFO)
     logging.info("Logging started")
     signal.signal(signal.SIGINT, signal_quitting)
     
+    # Check for Connected LCD and configure
     # Configuration parameters
     # I2C Address, Port, Enable pin, RW pin, RS pin, Data 4 pin, Data 5 pin, Data 6 pin, Data 7 pin, Backlight pin (optional)
     try:
@@ -321,13 +328,19 @@ if __name__ == "__main__":
         logging.error("LCD IO Error", exc_info=True)
         lcd = None
 
+
+
+
     try:        
+        #Start GPS polling thread
         gpsp = GpsPoller()
         gpsp.start()
         
+        #Start temperature updating thread
         tempthread = TempUpdates()
         tempthread.start()
     
+        # If LCD is connected start LCD updating thread. 
         if(lcd != None):
             lcdthread = LcdUpdate()
             lcdthread.start()
