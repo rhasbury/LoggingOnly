@@ -1,5 +1,7 @@
 #import webiopi
 import os
+from pydoc import stripid
+#from builtins import None
 os.system("export QUICK2WIRE_API_HOME=~/temperature/quick2wire-python-api")
 os.system("export PYTHONPATH=$PYTHONPATH:$QUICK2WIRE_API_HOME")
 os.system("export MPU6050_PATH=~/temperature/MPU6050")
@@ -12,13 +14,30 @@ import RPi.GPIO as GPIO
 import time
 from time import mktime
 from datetime import timedelta
-import threading
+import threading 
 import sys
 import dateutil.parser
 import math
 import signal
 import Adafruit_BMP.BMP085 as BMP085
 import collections
+import colorsys
+
+
+from lib_oled96 import ssd1306
+from smbus import SMBus
+from PIL import ImageFont, ImageDraw
+#font = ImageFont.load_default()
+font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 10)
+font15 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeSansBold.ttf', 15)
+font20 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 20)
+font30 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 30)
+i2cbus = SMBus(1)        # 1 = Raspberry Pi but NOT early REV1 board
+try:
+    oled = ssd1306(i2cbus)   # create oled object, nominating the correct I2C bus, default address
+except:
+    oled = None
+
 
 from i2clibraries import i2c_lcd
 from max6675 import *
@@ -27,6 +46,19 @@ from webiopi.clients import *
 from _ctypes import addressof
 from gps import *
 from MPU6050 import sensor
+
+
+from neopixel import *
+# LED strip configuration:
+LED_COUNT      = 12       # Number of LED pixels.
+LED_PIN        = 18      # GPIO pin connected to the pixels (must support PWM!).
+LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
+LED_DMA        = 5       # DMA channel to use for generating signal (try 5)
+LED_BRIGHTNESS = 50     # Set to 0 for darkest and 255 for brightest
+LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
+
+strip = None
+
 
 #signal.signal(signal.SIGINT, signal_handler)
 
@@ -47,11 +79,11 @@ tempqlen = 10
 ktempq = collections.deque(maxlen=tempqlen)
 
 
+lcdline1 = "alt"
+lcdline2 = "spd"
+lcdline3 = "time"
 
-
-lcdline1 = "   starting     "
-lcdline2 = "     now        "
-lcdline3 = "     roll       "
+i2cLock = threading.Lock()
 
 
 gpsd = None #seting the global variable
@@ -102,22 +134,28 @@ def UpdateTemps():
     global lcdline3    
     global tmp
     global oldktemp
+    global strip
     
-    if(tmp != None):
-        try:
-            AmbientTemp = tmp.read_temperature()
-            logTemplineDB("ambient", AmbientTemp)
-        except:
-            logging.error("UpdateTemps() Ambient Temp Read Error: ", exc_info=True)
+    tmp = None
+    i2cLock.acquire()
+    try:        
+        tmp = BMP085.BMP085()        
+        AmbientTemp = tmp.read_temperature()
+        logTemplineDB("ambient", AmbientTemp)
+    except:
+        tmp = None
+        logging.error("UpdateTemps() Ambient Temp Read Error: ", exc_info=True)
+    finally:
+        i2cLock.release()
 
     try:
         EngineTemp = thermocouple.get()
-        if(EngineTemp < 200 ):                  # check to remove unrealistic measurements....which happen frequently due to engine/ignition noise.              
+        if(EngineTemp < 200 ):                  # check to remove unrealistic measurement...which happen frequently due to engine noise.              
             ktempq.append(EngineTemp)            
             qavg = sum(ktempq) / ktempq.__len__()
             if(abs(EngineTemp-qavg) < 10):
                 logTemplineDB("engine", EngineTemp)
-                lcdline1 = "E:%4.1fC A:%4.1fC" % (EngineTemp, AmbientTemp)  
+                #lcdline1 = "E:%4.1fC A:%4.1fC" % (EngineTemp, AmbientTemp)  
     except KeyboardInterrupt:                        
         raise   
     except MAX6675Error as e:
@@ -125,9 +163,8 @@ def UpdateTemps():
         EngineTemp = -10
         logging.error("UpdateTemps() Excepted getting enginetemp: ", exc_info=True)
     
-    
-    
     if(ninedof != None):
+        i2cLock.acquire()
         try:
             roll = ninedof.roll
             #lcdline3 = "Roll: %4.1f " % (ninedof.roll)
@@ -139,7 +176,21 @@ def UpdateTemps():
     
         except:
             logging.error("UpdateTemps() ninedof sensor couldn't be read", exc_info=True)
-        #print (lcdstring)
+        
+        finally:
+            i2cLock.release()
+    
+    if(strip != None):
+        
+        colour = IntegertoRGB(EngineTemp-80)
+        strip.setPixelColorRGB(0, int(colour[0]*255), int(colour[1]*255), int(colour[2]*255))        
+        colour = IntegertoRGB(AmbientTemp-25)
+        strip.setPixelColorRGB(1, int(colour[0]*255), int(colour[1]*255), int(colour[2]*255))
+        strip.show()
+        #logging.error("changed LEDs")
+        
+    
+    #print (lcdstring)
 
 
 
@@ -149,6 +200,7 @@ def LogGPSPoint():
     global AmbientTemp
     global lcdline1
     global lcdline2   
+    global lcdline3
     global logradius
     resp = ""
    
@@ -179,9 +231,14 @@ def LogGPSPoint():
                 oldlong = gpsd.fix.longitude
                 logging.debug("Rows inserted: %s" % cur.rowcount)
                 logging.debug("SQL String: %s" % sql)
-            lcdline2 = "%4.1fm %3.1f %s" % (gpsd.fix.altitude, (gpsd.fix.speed * 3.6), gtime.strftime('%I:%M'))
+            lcdline1 = "{:4.1f}m".format(gpsd.fix.altitude)
+            lcdline2 = "{:3.1f} kmh".format(gpsd.fix.speed * 3.6)
+            lcdline3 = gtime.strftime('%I:%M')
         elif(gpsd.fix.mode != 3):
-            lcdline2 = "No GPS Fix      "
+            lcdline1 = "  "
+            lcdline2 = "NoFix"
+            lcdline3 = "  "
+            
     
     
     
@@ -259,25 +316,64 @@ class LcdUpdate(threading.Thread):
         threading.Thread.__init__(self)
         self.current_value = None
         self.running = True #setting the thread running to true 
-        
+        i2cLock.acquire()
+        try:
+            oled.canvas.rectangle((0, 0, oled.width-1, oled.height-1), outline=1, fill=0)
+            oled.cls()
+        finally:
+            i2cLock.release()
         
     def run(self):
         global lcd
         global lcdline1
         global lcdline2                 
+        global lcdline3
         while self.running:
-            lcd.clear
-            lcd.setPosition(1, 0) 
-            lcd.writeString(lcdline1)
-            lcd.setPosition(2, 0) 
-            lcd.writeString(lcdline3)
-            logging.debug("LCDString1: %s" % lcdline1)
-            logging.debug("LCDString2: %s" % lcdline2)
-            time.sleep(0.2)
+                        
+            if(oled != None):
+                i2cLock.acquire()
+                try:
+                    oled.canvas.rectangle((0, 0, oled.width-1, oled.height-1), outline=1, fill=0)
+                    oled.canvas.text((66,8), "E{0:3.0f}".format(EngineTemp), font=font20, fill=1)
+                    oled.canvas.text((66,33), "A{0:3.0f}".format(AmbientTemp), font=font20, fill=1)
+                    oled.canvas.text((8,8), lcdline2, font=font15, fill=1)
+                    oled.canvas.text((8,24), lcdline1, font=font15, fill=1)
+                    oled.canvas.text((8,40), lcdline3, font=font15, fill=1)
+                    #print("LCDString1: %s" % lcdline1)
+                    #print("LCDString2: %s" % lcdline2)
+                    #print("LCDString3: %s" % lcdline3)
+                    oled.display()
+                finally:
+                    i2cLock.release()
+                    
+            if(lcd != None):            
+                lcdline3 = datetime.datetime.now()
+                i2cLock.acquire()
+                try:
+                    lcd.clear
+                    lcd.setPosition(1, 0) 
+                    lcd.writeString(lcdline1)
+                    lcd.setPosition(2, 0) 
+                    lcd.writeString(lcdline2)
+                    logging.debug("LCDString1: %s" % lcdline1)
+                    logging.debug("LCDString2: %s" % lcdline2)
+                finally:
+                    i2cLock.release()
+                #lcd = None
+            time.sleep(0.2)            
              
 
  
- 
+
+def IntegertoRGB(numberin):    
+       
+    H = 1 - ((numberin/30) * 0.4)
+    S = 0.9
+    B = 0.9
+    if (H < 0):
+        H = 0
+    rgb = colorsys.hsv_to_rgb(H, S, B)
+    return rgb
  
 class TempUpdates(threading.Thread):
     
@@ -290,60 +386,60 @@ class TempUpdates(threading.Thread):
     def run(self):                 
         while self.running:
             UpdateTemps()
-            time.sleep(0.2)
+            time.sleep(1)
             
  
  
 if __name__ == "__main__":
+    tmp = None
+    #try:
+    #    tmp = BMP085.BMP085()
+    #except:
+    #    logging.error("BMP085 IO Error", exc_info=True)
+    #    tmp = None
 
-
-    # Check for connected BMP085 sensor
-    try:
-        tmp = BMP085.BMP085()
-    except:
-        logging.error("BMP085 IO Error", exc_info=True)
-        tmp = None
-
-
-    # Check for connected MPU6050 sensor
-    try:
-        ninedof = sensor.sensor()
-        ninedof.start()
-    except IOError:
-        logging.error("9dof sensor init error", exc_info=True)
-        ninedof = None
-
-    # Create logger and set options
+    #try:
+    #    ninedof = sensor.sensor()
+    #    ninedof.start()
+    #except IOError:
+    #    logging.error("9dof sensor init error", exc_info=True)
+    #    ninedof = None
+    ninedof = None
+    
     logging.getLogger().setLevel(logging.INFO)
     logging.info("Logging started")
     signal.signal(signal.SIGINT, signal_quitting)
     
-    # Check for Connected LCD and configure
     # Configuration parameters
     # I2C Address, Port, Enable pin, RW pin, RS pin, Data 4 pin, Data 5 pin, Data 6 pin, Data 7 pin, Backlight pin (optional)
+    i2cLock.acquire()
     try:
         lcd = i2c_lcd.i2c_lcd(0x27, 1, 2, 1, 0, 4, 5, 6, 7, 3)
         lcd.backLightOn()
     except IOError:
-        logging.error("LCD IO Error", exc_info=True)
+        #logging.error("LCD IO Error", exc_info=True)
         lcd = None
-
-
-
-
+    finally:
+        i2cLock.release()
+    
+    try:
+        strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
+        strip.begin()
+    except:
+        logging.error("LED Error", exc_info=True)
+        strip = None
+    
+    
     try:        
-        #Start GPS polling thread
         gpsp = GpsPoller()
         gpsp.start()
         
-        #Start temperature updating thread
         tempthread = TempUpdates()
         tempthread.start()
     
-        # If LCD is connected start LCD updating thread. 
-        if(lcd != None):
-            lcdthread = LcdUpdate()
-            lcdthread.start()
+        #if(lcd != None):
+        lcdthread = LcdUpdate()
+        lcdthread.start()
         while True: time.sleep(100)
     except:
         raise    
