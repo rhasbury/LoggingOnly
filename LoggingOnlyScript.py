@@ -7,7 +7,7 @@ os.system("export PYTHONPATH=$PYTHONPATH:$QUICK2WIRE_API_HOME")
 os.system("export MPU6050_PATH=~/temperature/MPU6050")
 os.system("export PYTHONPATH=$PYTHONPATH:$MPU6050_PATH")
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', filename='/home/pi/temperature/Loggingonly.log', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', filename='/home/pi/LoggingOnly/Loggingonly.log', level=logging.DEBUG)
 import datetime
 import pymysql.cursors
 import RPi.GPIO as GPIO
@@ -29,7 +29,7 @@ from smbus import SMBus
 from PIL import ImageFont, ImageDraw
 #font = ImageFont.load_default()
 font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 10)
-font15 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeSansBold.ttf', 15)
+font15 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf', 15)
 font20 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 20)
 font30 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 30)
 i2cbus = SMBus(1)        # 1 = Raspberry Pi but NOT early REV1 board
@@ -58,7 +58,6 @@ LED_BRIGHTNESS = 50     # Set to 0 for darkest and 255 for brightest
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 
 strip = None
-
 
 #signal.signal(signal.SIGINT, signal_handler)
 
@@ -231,8 +230,9 @@ def LogGPSPoint():
                 oldlong = gpsd.fix.longitude
                 logging.debug("Rows inserted: %s" % cur.rowcount)
                 logging.debug("SQL String: %s" % sql)
-            lcdline1 = "{:4.1f}m".format(gpsd.fix.altitude)
-            lcdline2 = "{:3.1f} kmh".format(gpsd.fix.speed * 3.6)
+            
+            lcdline1 = "{: >4.1f} m".format(gpsd.fix.altitude)
+            lcdline2 = "{: >4.1f} km".format(gpsd.fix.speed * 3.6)
             lcdline3 = gtime.strftime('%I:%M')
         elif(gpsd.fix.mode != 3):
             lcdline1 = "  "
